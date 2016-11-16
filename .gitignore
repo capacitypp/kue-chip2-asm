@@ -25,7 +25,7 @@
 *.lib
 
 # Executables
-Main
+kc2asm
 *.exe
 *.out
 *.app

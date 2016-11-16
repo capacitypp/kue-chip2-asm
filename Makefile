@@ -4,7 +4,7 @@ CPPFLAGS=$(INCLUDE) -Wall -O2 -std=c++14 -MMD
 LDFLAGS=
 BUILDPATH=./build
 CXX=ccache clang++
-TARGET=Main
+TARGET=kc2asm
 
 all : makefolder $(OBJPATHS)
 	$(CXX) -o $(TARGET) $(LDFLAGS) $(OBJPATHS)
