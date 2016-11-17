@@ -1,3 +1,8 @@
+*.tab.h
+*.tab.c
+*.output
+*.yy.c
+
 # Compiled Object files
 *.slo
 *.lo
@@ -26,6 +31,7 @@
 
 # Executables
 kc2asm
+macro_expansion
 *.exe
 *.out
 *.app
