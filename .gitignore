@@ -33,6 +33,7 @@ test/*
 # Executables
 kc2asm
 macro_expansion
+label_expansion
 *.exe
 *.out
 *.app

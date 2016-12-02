@@ -1,3 +1,11 @@
+C1: EQU 01h
+C2: EQU 02h
+D: EQU 03h
+B1: EQU 04h
+B2: EQU 05h
+A1: EQU 06h
+A2: EQU 07h
+
 	LD	ACC,00h
 	ST	ACC,[C1]
 	ST	ACC,[C2]
