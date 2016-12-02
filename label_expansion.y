@@ -238,7 +238,7 @@ void resolve_label(char* command)
 	if (idx == -1)
 		return;
 	char *ptr = strstr(command, labeldefs[idx].label);
-	sprintf(ptr, "%02Xh", labeldefs[idx].address);
+	sprintf(ptr, (labeldefs[idx].address >= 0xA0) ? "0%02Xh" : "%02Xh", labeldefs[idx].address);
 }
 
 void register_command(char* command)
