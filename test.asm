@@ -43,4 +43,5 @@ L4:	SLA	ACC
 	ST	ACC,[B2]
 	BA	L0
 L5:	HLT
+	END
 

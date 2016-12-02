@@ -2,6 +2,7 @@
 *.tab.c
 *.output
 *.yy.c
+test/*
 
 # Compiled Object files
 *.slo

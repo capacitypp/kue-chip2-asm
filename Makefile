@@ -27,6 +27,7 @@ makefolder :
 
 clean :
 	$(RM) $(TARGET)
+	$(RM) macro_expansion
 	$(RM) -r -f $(BUILDPATH)
 	$(RM) *.tab.c
 	$(RM) *.tab.h

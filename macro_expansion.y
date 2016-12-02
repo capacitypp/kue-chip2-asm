@@ -1,265 +1,179 @@
 %{
 
 #include <stdio.h>
+#include <string.h>
 
-//#define YYSTYPE char*
+#define MAX_MACRO_NUM	256
+#define STRING_LENGTH	256
 
 extern int yyparse();
 extern FILE* yyin;
 void yyerror(const char* s);
-void add_data(unsigned char data);
-void newline(void);
+void register_macro(char* label_name, char* label_value);
+int srch_macro(char* label_name);
+void resolve_macro(char* string);
+
+char label_names[MAX_MACRO_NUM][STRING_LENGTH];
+char label_values[MAX_MACRO_NUM][STRING_LENGTH];
+int label_idx = 0;
 
 %}
 
 %union {
-	char* string;
-	char basic_command;
-	char reg;
-	char ea[2];
-	unsigned char hex;
-	char command2[2];
-	unsigned char address;
+	char label_name[256];
+	char hex[256];
+	char decimal[256];
+	char number[256];
+	char string[256];
+	char opcode[256];
+	char operand[256];
+	char command[256];
 }
 
 %defines
-%token HLT NOP IN OUT SCF RCF
-%token LD
-%token ST
-%token ADD ADC SUB SBC CMP AND OR EOR
-%token SRA SLA SRL SLL
-%token RRA RLA RRL RLL
-%token BA BVF BNZ BZ BZP BN BP BZN BNI BNO BNC BC BGE BLT BGT BLE
-%token ACC IX
-%token HEX
-%token PARENTHESIS_BEGIN PARENTHESIS_END BRACKET_BEGIN BRACKET_END
-%token PLUS
+%token LABEL
+%token COLON
+%token EQU
+%token HEX DECIMAL
+%token OPCODE
 %token COMMA
-%type <basic_command> command1 operator_simgle operator_reg_ea operator_reg_ma command_reg operator_reg operator_imm
-%type <reg> reg;
-%type <ea> ea ma
-%type <hex> HEX d dd pd dixd pixd
-%type <command2> command2 command_reg_ea command_reg_ma command_imm
-%type <address> imm
+%token PARENTHESIS_BEGIN PARENTHESIS_END
+%token BRACKET_BEGIN BRACKET_END
+%token PLUS
+%token STRING
+%token END
+%type <label_name> LABEL
+%type <hex> HEX
+%type <decimal> DECIMAL
+%type <number> number
+%type <opcode> OPCODE
+%type <operand> operand
+%type <string> STRING
+%type <command> command
 
 %%
 
-program: commands
+program: macros commands END
+	   {
+		puts("\tEND");
+	   }
 	   ;
 
-commands: 
+macros: 
+	  | macros macro
+	  ;
+
+macro: LABEL COLON EQU number
+	 {
+		register_macro($1, $4);
+	 }
+	 ;
+
+number: HEX
+	  {
+		strcpy($$, $1);
+	  }
+	  | DECIMAL
+	  {
+		strcpy($$, $1);
+	  }
+	  ;
+
+commands:
 		| commands command
-			{
-				newline();
-			}
+		{
+			printf("%s\n", $2);
+		}
+		| commands LABEL COLON command
+		{
+			printf("%s:%s\n", $2, $4);
+		}
 		;
 
-command: command1
-			{
-				add_data($1);
-			}
-	   | command2
+command: OPCODE
+	   {
+		sprintf($$, "\t%s", $1);
+	   }
+	   | OPCODE operand
+	   {
+		sprintf($$, "\t%s %s", $1, $2);
+	   }
+	   | OPCODE operand COMMA operand
+	   {
+		sprintf($$, "\t%s %s,%s", $1, $2, $4);
+	   }
 	   ;
 
-command1: operator_simgle
-		| command_reg
+operand : STRING
+		{
+			resolve_macro($1);
+			strcpy($$, $1);
+		}
+		| number
+		{
+			strcpy($$, $1);
+		}
+		| PARENTHESIS_BEGIN number PARENTHESIS_END
+		{
+			strcpy($$, "(");
+			strcat($$, $2);
+			strcat($$, ")");
+		}
+		| PARENTHESIS_BEGIN STRING PARENTHESIS_END
+		{
+			strcpy($$, "(");
+			resolve_macro($2);
+			strcat($$, $2);
+			strcat($$, ")");
+		}
+		| BRACKET_BEGIN number BRACKET_END
+		{
+			strcpy($$, "[");
+			strcat($$, $2);
+			strcat($$, "]");
+		}
+		| BRACKET_BEGIN STRING BRACKET_END
+		{
+			strcpy($$, "[");
+			resolve_macro($2);
+			strcat($$, $2);
+			strcat($$, "]");
+		}
+		| PARENTHESIS_BEGIN STRING PLUS number PARENTHESIS_END
+		{
+			strcpy($$, "(");
+			strcat($$, $2);
+			strcat($$, "+");
+			strcat($$, $4);
+			strcat($$, ")");
+		}
+		| PARENTHESIS_BEGIN STRING PLUS STRING PARENTHESIS_END
+		{
+			strcpy($$, "(");
+			strcat($$, $2);
+			strcat($$, "+");
+			resolve_macro($4);
+			strcat($$, $4);
+			strcat($$, ")");
+		}
+		| BRACKET_BEGIN STRING PLUS number BRACKET_END
+		{
+			strcpy($$, "[");
+			strcat($$, $2);
+			strcat($$, "+");
+			strcat($$, $4);
+			strcat($$, "]");
+		}
+		| BRACKET_BEGIN STRING PLUS STRING BRACKET_END
+		{
+			strcpy($$, "[");
+			strcat($$, $2);
+			strcat($$, "+");
+			resolve_macro($4);
+			strcat($$, $4);
+			strcat($$, "]");
+		}
 	   ;
-
-command2: command_reg_ea
-			{
-				add_data($1[0]);
-				if (($1[0] & 0x07) >= 0x02)
-					add_data($1[1]);
-			}
-		| command_reg_ma
-			{
-				add_data($1[0]);
-				add_data($1[1]);
-			}
-		| command_imm
-			{
-				add_data($1[0]);
-				add_data($1[1]);
-			}
-		;
-
-command_reg_ea: operator_reg_ea reg COMMA ea
-				{
-					$$[0] = $1;
-					$$[0] |= $2;
-					$$[0] |= $4[0];
-					$$[1] = $4[1];
-				}
-			  ;
-
-command_reg_ma: operator_reg_ma reg COMMA ma
-				{
-					$$[0] = $1;
-					$$[0] |= $2;
-					$$[0] |= $4[0];
-					$$[1] = $4[1];
-				}
-			  ;
-
-command_reg: operator_reg reg
-			{
-				$$ = $1;
-				$$ |= $2;
-			}
-		   ;
-
-command_imm: operator_imm imm
-			{
-				$$[0] = $1;
-				$$[1] = $2;
-			}
-		  ;
-
-operator_simgle: NOP
-			   | HLT
-			   | OUT
-			   | IN
-			   | RCF
-			   | SCF
-			   ;
-
-operator_reg_ea: LD
-			   | ADD
-			   | ADC
-			   | SUB
-			   | SBC
-			   | CMP
-			   | AND
-			   | OR
-			   | EOR
-			   ;
-
-operator_reg_ma: ST
-			   ;
-
-operator_reg: SRA
-			| SLA
-			| SRL
-			| SLL
-			| RRA
-			| RLA
-			| RRL
-			| RLL
-			;
-
-operator_imm: BA
-			| BVF
-			| BNZ
-			| BZ
-			| BZP
-			| BN
-			| BP
-			| BZN
-			| BNI
-			| BNO
-			| BNC
-			| BC
-			| BGE
-			| BLT
-			| BGT
-			| BLE
-			;
-
-reg: ACC
-	{
-		$$ = 0x00;
-	}
-   | IX
-	{
-		$$ = 0x08;
-	}
-   ;
-
-ea: ACC
-	{
-		$$[0] = 0x00;
-	}
-  | IX
-	{
-		$$[0] = 0x01;
-	}
-  | d
-	{
-		$$[0] = 0x02;
-		$$[1] = $1;
-	}
-  | dd
-	{
-		$$[0] = 0x05;
-		$$[1] = $1;
-	}
-  | pd
-	{
-		$$[0] = 0x04;
-		$$[1] = $1;
-	}
-  | dixd
-	{
-		$$[0] = 0x07;
-		$$[1] = $1;
-	}
-  | pixd
-	{
-		$$[0] = 0x06;
-		$$[1] = $1;
-	}
-  ;
-
-ma: dd
-	{
-		$$[0] = 0x05;
-		$$[1] = $1;
-	}
-  | pd
-	{
-		$$[0] = 0x04;
-		$$[1] = $1;
-	}
-  | dixd
-	{
-		$$[0] = 0x07;
-		$$[1] = $1;
-	}
-  | pixd
-	{
-		$$[0] = 0x06;
-		$$[1] = $1;
-	}
-  ;
-d: HEX
- ;
-
-dd: PARENTHESIS_BEGIN d PARENTHESIS_END
-	{
-		$$ = $2;
-	}
-  ;
-
-pd: BRACKET_BEGIN d BRACKET_END
-	{
-		$$ = $2;
-	}
-  ;
-
-dixd: PARENTHESIS_BEGIN IX PLUS d PARENTHESIS_END
-	{
-		$$ = $4;
-	}
-	;
-
-pixd: BRACKET_BEGIN IX PLUS d BRACKET_END
-	{
-		$$ = $4;
-	}
-	;
-
-imm: d
-   ;
 
 %%
 
@@ -279,13 +193,26 @@ void yyerror(const char* s)
 	fprintf(stderr, "**ERROR** at line %d: %s\n", yylineno, s);
 }
 
-void add_data(unsigned char data)
+void register_macro(char* label_name, char* label_value)
 {
-	printf("%02X ", (int)data);
+	strcpy(label_names[label_idx], label_name);
+	strcpy(label_values[label_idx], label_value);
+	label_idx++;
 }
 
-void newline(void)
+int srch_macro(char* label_name)
 {
-	putchar('\n');
+	int idx;
+	for (idx = 0; idx < label_idx; idx++)
+		if (!strcmp(label_names[idx], label_name))
+		return idx;
+	return -1;
+}
+
+void resolve_macro(char* string)
+{
+	int idx = srch_macro(string);
+	if (idx != -1)
+		strcpy(string, label_values[idx]);
 }
 
