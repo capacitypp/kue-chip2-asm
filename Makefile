@@ -6,7 +6,7 @@ BUILDPATH=./build
 CXX=ccache clang++
 TARGET=kc2asm
 
-all : makefolder $(OBJPATHS) macro_expansion label_expansion
+all : makefolder $(OBJPATHS) macro_expansion label_expansion compile
 	$(CXX) -o $(TARGET) $(LDFLAGS) $(OBJPATHS)
 
 macro_expansion : macro_expansion_bison macro_expansion_lex
@@ -27,6 +27,15 @@ label_expansion_lex : label_expansion.l label_expansion.tab.h
 label_expansion_bison : label_expansion.y
 	bison -dv label_expansion.y
 
+compile : compile_bison compile_lex
+	gcc -o compile compile.tab.c compile.yy.c -lfl
+
+compile_lex : compile.l compile.tab.h
+	flex -o compile.yy.c compile.l
+
+compile_bison : compile.y
+	bison -dv compile.y
+
 $(BUILDPATH)/%.o : %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CPPFLAGS) -o $@ -c $<
@@ -38,6 +47,7 @@ clean :
 	$(RM) $(TARGET)
 	$(RM) macro_expansion
 	$(RM) label_expansion
+	$(RM) compile
 	$(RM) -r -f $(BUILDPATH)
 	$(RM) *.tab.c
 	$(RM) *.tab.h
